@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda con Firebase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white shadow-2xl rounded-xl w-full max-w-md p-8">
+        <h1 class="text-4xl font-bold text-center text-purple-600 mb-8">Mi Agenda</h1>
+        
+        <form id="addContactForm" class="mb-6 space-y-4">
+            <input 
+                type="text" 
+                id="name" 
+                placeholder="Nombre" 
+                required 
+                class="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+            >
+            <input 
+                type="text" 
+                id="phone" 
+                placeholder="Teléfono" 
+                required 
+                class="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+            >
+            <button 
+                type="button" 
+                id="addContact" 
+                class="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition transform hover:scale-105"
+            >
+                Añadir Contacto
+            </button>
+        </form>
+
+        <ul 
+            id="contactList" 
+            class="space-y-4 max-h-96 overflow-y-auto"
+        ></ul>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA984_2d2ZLAsZe1zc553gIXgwWRwA-TLU",
+            authDomain: "topicos-883b9.firebaseapp.com",
+            projectId: "topicos-883b9",
+            storageBucket: "topicos-883b9.firebasestorage.app",
+            messagingSenderId: "646937285018",
+            appId: "1:646937285018:web:0d493c6ff01437e3932a23"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const nameInput = document.getElementById('name');
+        const phoneInput = document.getElementById('phone');
+        const addButton = document.getElementById('addContact');
+        const contactList = document.getElementById('contactList');
+
+        addButton.addEventListener('click', async () => {
+            if (nameInput.value && phoneInput.value) {
+                try {
+                    await addDoc(collection(db, "contacts"), {
+                        name: nameInput.value,
+                        phone: phoneInput.value
+                    });
+                    nameInput.value = '';
+                    phoneInput.value = '';
+                    await loadContacts();
+                } catch (e) {
+                    console.error("Error adding document: ", e);
+                }
+            }
+        });
+
+        async function loadContacts() {
+            const q = query(collection(db, "contacts"), orderBy("name"));
+            const querySnapshot = await getDocs(q);
+            contactList.innerHTML = '';
+            querySnapshot.forEach((doc) => {
+                const li = document.createElement('li');
+                li.className = 'bg-purple-50 rounded-lg p-4 flex justify-between items-center shadow-sm';
+                li.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-purple-800">${doc.data().name}</p>
+                        <p class="text-purple-600">${doc.data().phone}</p>
+                    </div>
+                    <div class="space-x-2">
+                        <button 
+                            onclick="editContact('${doc.id}', '${doc.data().name}', '${doc.data().phone}')" 
+                            class="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition"
+                        >
+                            Editar
+                        </button>
+                        <button 
+                            onclick="deleteContact('${doc.id}')" 
+                            class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
+                        >
+                            Eliminar
+                        </button>
+                    </div>
+                `;
+                contactList.appendChild(li);
+            });
+        }
+
+        window.editContact = async (id, name, phone) => {
+            const newName = prompt('Nuevo nombre:', name);
+            const newPhone = prompt('Nuevo teléfono:', phone);
+            if (newName && newPhone) {
+                try {
+                    await updateDoc(doc(db, "contacts", id), {
+                        name: newName,
+                        phone: newPhone
+                    });
+                    await loadContacts();
+                } catch (e) {
+                    console.error("Error updating document: ", e);
+                }
+            }
+        };
+
+        window.deleteContact = async (id) => {
+            if (confirm('¿Estás seguro de eliminar este contacto?')) {
+                try {
+                    await deleteDoc(doc(db, "contacts", id));
+                    await loadContacts();
+                } catch (e) {
+                    console.error("Error deleting document: ", e);
+                }
+            }
+        };
+
+        window.onload = loadContacts;
+    </script>
+</body>
+</html>
